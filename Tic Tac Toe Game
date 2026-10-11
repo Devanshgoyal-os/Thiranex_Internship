@@ -1,0 +1,159 @@
+```cpp
+#include <iostream>
+using namespace std;
+
+char board[3][3];
+char marker;
+int player;
+
+// Set numbers from 1 to 9 on the board
+void resetBoard() {
+    char num = '1';
+
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            board[i][j] = num++;
+        }
+    }
+}
+
+// Show the current board
+void showBoard() {
+    cout << "\n";
+
+    for (int i = 0; i < 3; i++) {
+        cout << " " << board[i][0] << " | "
+             << board[i][1] << " | "
+             << board[i][2] << "\n";
+
+        if (i < 2) {
+            cout << "---|---|---\n";
+        }
+    }
+
+    cout << "\n";
+}
+
+// Put X or O in the selected box
+bool makeMove(int slot) {
+    if (slot < 1 || slot > 9) {
+        return false;
+    }
+
+    int row = (slot - 1) / 3;
+    int col = (slot - 1) % 3;
+
+    if (board[row][col] == 'X' ||
+        board[row][col] == 'O') {
+        return false;
+    }
+
+    board[row][col] = marker;
+    return true;
+}
+
+// Check whether a player has won
+bool checkWinner() {
+    for (int i = 0; i < 3; i++) {
+        // Check rows
+        if (board[i][0] == marker &&
+            board[i][1] == marker &&
+            board[i][2] == marker) {
+            return true;
+        }
+
+        // Check columns
+        if (board[0][i] == marker &&
+            board[1][i] == marker &&
+            board[2][i] == marker) {
+            return true;
+        }
+    }
+
+    // Check diagonals
+    if (board[0][0] == marker &&
+        board[1][1] == marker &&
+        board[2][2] == marker) {
+        return true;
+    }
+
+    if (board[0][2] == marker &&
+        board[1][1] == marker &&
+        board[2][0] == marker) {
+        return true;
+    }
+
+    return false;
+}
+
+// Start and play one game
+void playGame() {
+    resetBoard();
+
+    player = 1;
+    marker = 'X';
+
+    int moves = 0;
+    bool won = false;
+
+    cout << "\n--- Tic Tac Toe ---\n";
+    showBoard();
+
+    while (moves < 9) {
+        int slot;
+
+        cout << "Player " << player << " (" << marker
+             << "), choose a box (1-9): ";
+
+        if (!(cin >> slot)) {
+            cout << "Please enter a valid number.\n";
+            cin.clear();
+            cin.ignore(10000, '\n');
+            continue;
+        }
+
+        if (!makeMove(slot)) {
+            cout << "That box is not available. Try again.\n";
+            continue;
+        }
+
+        moves++;
+        showBoard();
+
+        if (checkWinner()) {
+            cout << "Player " << player << " wins!\n";
+            won = true;
+            break;
+        }
+
+        // Change the player after a valid move
+        if (player == 1) {
+            player = 2;
+            marker = 'O';
+        } else {
+            player = 1;
+            marker = 'X';
+        }
+    }
+
+    if (!won) {
+        cout << "The game is a draw!\n";
+    }
+}
+
+int main() {
+    char again;
+
+    do {
+        playGame();
+
+        cout << "Play again? (y/n): ";
+        cin >> again;
+
+    } while (again == 'y' || again == 'Y');
+
+    cout << "Thanks for playing!\n";
+
+    return 0;
+}
+```
