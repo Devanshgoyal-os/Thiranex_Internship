@@ -1,0 +1,273 @@
+```cpp
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <iomanip>
+#include <limits>
+#include <cstdio>
+using namespace std;
+
+const string fileName = "students.txt";
+
+struct Student {
+    int id;
+    char name[50];
+    char course[50];
+    float gpa;
+};
+
+void addStudent();
+void showStudents();
+void updateStudent();
+void deleteStudent();
+void clearInput();
+
+int main() {
+    int choice;
+
+    while (true) {
+        cout << "\n===== Student Management System =====\n";
+        cout << "1. Add Student\n";
+        cout << "2. Show All Students\n";
+        cout << "3. Update Student\n";
+        cout << "4. Delete Student\n";
+        cout << "5. Exit\n";
+        cout << "Enter your choice: ";
+
+        if (!(cin >> choice)) {
+            cout << "Please enter a valid number.\n";
+            clearInput();
+            continue;
+        }
+
+        switch (choice) {
+            case 1:
+                addStudent();
+                break;
+
+            case 2:
+                showStudents();
+                break;
+
+            case 3:
+                updateStudent();
+                break;
+
+            case 4:
+                deleteStudent();
+                break;
+
+            case 5:
+                cout << "Program closed successfully.\n";
+                return 0;
+
+            default:
+                cout << "Invalid choice. Try again.\n";
+        }
+    }
+
+    return 0;
+}
+
+// Add a new student
+void addStudent() {
+    ofstream file(fileName, ios::binary | ios::app);
+
+    if (!file) {
+        cout << "Unable to open the file.\n";
+        return;
+    }
+
+    Student s;
+
+    cout << "\nEnter student ID: ";
+    while (!(cin >> s.id)) {
+        cout << "Enter a valid ID: ";
+        clearInput();
+    }
+
+    clearInput();
+
+    cout << "Enter student name: ";
+    cin.getline(s.name, 50);
+
+    cout << "Enter course name: ";
+    cin.getline(s.course, 50);
+
+    cout << "Enter GPA (0 to 4): ";
+    while (!(cin >> s.gpa) || s.gpa < 0 || s.gpa > 4) {
+        cout << "Enter GPA between 0 and 4: ";
+        clearInput();
+    }
+
+    file.write(reinterpret_cast<char*>(&s), sizeof(s));
+    file.close();
+
+    cout << "Student record added successfully!\n";
+}
+
+// Display all students
+void showStudents() {
+    ifstream file(fileName, ios::binary);
+
+    if (!file) {
+        cout << "No student records available.\n";
+        return;
+    }
+
+    Student s;
+    bool found = false;
+
+    cout << "\n";
+    cout << left << setw(10) << "ID"
+         << setw(25) << "Name"
+         << setw(25) << "Course"
+         << setw(10) << "GPA" << "\n";
+
+    cout << string(70, '-') << "\n";
+
+    while (file.read(reinterpret_cast<char*>(&s), sizeof(s))) {
+        found = true;
+
+        cout << left << setw(10) << s.id
+             << setw(25) << s.name
+             << setw(25) << s.course
+             << fixed << setprecision(2) << s.gpa << "\n";
+    }
+
+    if (!found) {
+        cout << "No records found in the file.\n";
+    }
+
+    file.close();
+}
+
+// Update student details
+void updateStudent() {
+    fstream file(fileName, ios::binary | ios::in | ios::out);
+
+    if (!file) {
+        cout << "No records available to update.\n";
+        return;
+    }
+
+    int id;
+    cout << "Enter student ID to update: ";
+
+    if (!(cin >> id)) {
+        cout << "Invalid ID.\n";
+        clearInput();
+        return;
+    }
+
+    Student s;
+    bool found = false;
+
+    while (file.read(reinterpret_cast<char*>(&s), sizeof(s))) {
+        if (s.id == id) {
+            found = true;
+
+            cout << "\nCurrent student details:\n";
+            cout << "Name: " << s.name << "\n";
+            cout << "Course: " << s.course << "\n";
+            cout << "GPA: " << s.gpa << "\n";
+
+            clearInput();
+
+            cout << "\nEnter new name: ";
+            cin.getline(s.name, 50);
+
+            cout << "Enter new course: ";
+            cin.getline(s.course, 50);
+
+            cout << "Enter new GPA (0 to 4): ";
+
+            while (!(cin >> s.gpa) ||
+                   s.gpa < 0 || s.gpa > 4) {
+                cout << "Enter GPA between 0 and 4: ";
+                clearInput();
+            }
+
+            streampos pos = file.tellg();
+            file.seekp(pos - static_cast<streamoff>(sizeof(s)));
+
+            file.write(reinterpret_cast<char*>(&s), sizeof(s));
+
+            cout << "Student record updated successfully!\n";
+            break;
+        }
+    }
+
+    file.close();
+
+    if (!found) {
+        cout << "Student ID not found.\n";
+    }
+}
+
+// Delete a student record
+void deleteStudent() {
+    ifstream file(fileName, ios::binary);
+
+    if (!file) {
+        cout << "No records available to delete.\n";
+        return;
+    }
+
+    int id;
+    cout << "Enter student ID to delete: ";
+
+    if (!(cin >> id)) {
+        cout << "Invalid ID.\n";
+        clearInput();
+        return;
+    }
+
+    ofstream tempFile("temp.txt", ios::binary);
+
+    if (!tempFile) {
+        cout << "Unable to create temporary file.\n";
+        file.close();
+        return;
+    }
+
+    Student s;
+    bool found = false;
+
+    while (file.read(reinterpret_cast<char*>(&s), sizeof(s))) {
+        if (s.id == id) {
+            found = true;
+        } else {
+            tempFile.write(reinterpret_cast<char*>(&s), sizeof(s));
+        }
+    }
+
+    file.close();
+    tempFile.close();
+
+    if (!found) {
+        remove("temp.txt");
+        cout << "Student ID not found.\n";
+        return;
+    }
+
+    if (remove(fileName.c_str()) != 0) {
+        cout << "Unable to replace the old file.\n";
+        remove("temp.txt");
+        return;
+    }
+
+    if (rename("temp.txt", fileName.c_str()) != 0) {
+        cout << "Unable to save the updated records.\n";
+        return;
+    }
+
+    cout << "Student record deleted successfully!\n";
+}
+
+// Clear invalid input and leftover characters
+void clearInput() {
+    cin.clear();
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+}
+```
