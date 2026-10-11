@@ -1,0 +1,312 @@
+```cpp
+#include <iostream>
+#include <fstream>
+#include <iomanip>
+#include <string>
+#include <limits>
+#include <cstdio>
+using namespace std;
+
+const char FILE_NAME[] = "bank_records.dat";
+
+class BankAccount {
+private:
+    int accountNumber;
+    char name[50];
+    double balance;
+
+public:
+    BankAccount() {
+        accountNumber = 0;
+        name[0] = '\0';
+        balance = 0;
+    }
+
+    void createAccount() {
+        cout << "\nEnter account number: ";
+        while (!(cin >> accountNumber)) {
+            cout << "Enter a valid account number: ";
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        }
+
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+        cout << "Enter account holder name: ";
+        cin.getline(name, 50);
+
+        cout << "Enter initial deposit: $";
+        while (!(cin >> balance) || balance < 0) {
+            cout << "Enter a valid amount: $";
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        }
+
+        cout << "Account created successfully!\n";
+    }
+
+    void showAccount() const {
+        cout << "\n-----------------------------\n";
+        cout << "Account Number: " << accountNumber << "\n";
+        cout << "Account Name: " << name << "\n";
+        cout << "Balance: $" << fixed << setprecision(2)
+             << balance << "\n";
+        cout << "-----------------------------\n";
+    }
+
+    void deposit(double amount) {
+        if (amount <= 0) {
+            cout << "Enter an amount greater than zero.\n";
+            return;
+        }
+
+        balance += amount;
+        cout << "Money deposited successfully!\n";
+        cout << "Updated balance: $" << fixed
+             << setprecision(2) << balance << "\n";
+    }
+
+    void withdraw(double amount) {
+        if (amount <= 0) {
+            cout << "Enter an amount greater than zero.\n";
+        } else if (amount > balance) {
+            cout << "Not enough balance!\n";
+        } else {
+            balance -= amount;
+            cout << "Money withdrawn successfully!\n";
+            cout << "Remaining balance: $" << fixed
+                 << setprecision(2) << balance << "\n";
+        }
+    }
+
+    int getAccountNumber() const {
+        return accountNumber;
+    }
+};
+
+// Create a new account
+void addAccount() {
+    BankAccount account;
+
+    ofstream file(FILE_NAME, ios::binary | ios::app);
+
+    if (!file) {
+        cout << "Unable to open the file.\n";
+        return;
+    }
+
+    account.createAccount();
+
+    file.write(reinterpret_cast<char*>(&account),
+               sizeof(account));
+
+    file.close();
+}
+
+// Check account details
+void checkAccount(int id) {
+    BankAccount account;
+    ifstream file(FILE_NAME, ios::binary);
+
+    if (!file) {
+        cout << "No account records found.\n";
+        return;
+    }
+
+    while (file.read(reinterpret_cast<char*>(&account),
+                     sizeof(account))) {
+        if (account.getAccountNumber() == id) {
+            account.showAccount();
+            file.close();
+            return;
+        }
+    }
+
+    file.close();
+    cout << "Account not found.\n";
+}
+
+// Deposit or withdraw money
+void transaction(int id, int type) {
+    BankAccount account;
+    fstream file(FILE_NAME,
+                 ios::binary | ios::in | ios::out);
+
+    if (!file) {
+        cout << "Unable to open account records.\n";
+        return;
+    }
+
+    while (file.read(reinterpret_cast<char*>(&account),
+                     sizeof(account))) {
+        if (account.getAccountNumber() == id) {
+            double amount;
+
+            account.showAccount();
+
+            cout << "Enter amount: $";
+            if (!(cin >> amount)) {
+                cout << "Invalid amount.\n";
+                cin.clear();
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                file.close();
+                return;
+            }
+
+            if (type == 1) {
+                account.deposit(amount);
+            } else {
+                account.withdraw(amount);
+            }
+
+            // Update the same account record
+            file.seekp(-static_cast<streamoff>(sizeof(account)),
+                       ios::cur);
+
+            file.write(reinterpret_cast<char*>(&account),
+                       sizeof(account));
+
+            file.close();
+            return;
+        }
+    }
+
+    file.close();
+    cout << "Account not found.\n";
+}
+
+// Delete an account
+void deleteAccount(int id) {
+    ifstream file(FILE_NAME, ios::binary);
+
+    if (!file) {
+        cout << "No account records found.\n";
+        return;
+    }
+
+    ofstream tempFile("temp.dat", ios::binary);
+
+    if (!tempFile) {
+        file.close();
+        cout << "Unable to create temporary file.\n";
+        return;
+    }
+
+    BankAccount account;
+    bool found = false;
+
+    while (file.read(reinterpret_cast<char*>(&account),
+                     sizeof(account))) {
+        if (account.getAccountNumber() == id) {
+            found = true;
+        } else {
+            tempFile.write(reinterpret_cast<char*>(&account),
+                           sizeof(account));
+        }
+    }
+
+    file.close();
+    tempFile.close();
+
+    if (!found) {
+        remove("temp.dat");
+        cout << "Account not found.\n";
+        return;
+    }
+
+    if (remove(FILE_NAME) != 0) {
+        remove("temp.dat");
+        cout << "Unable to update account records.\n";
+        return;
+    }
+
+    if (rename("temp.dat", FILE_NAME) != 0) {
+        cout << "Unable to save updated records.\n";
+        return;
+    }
+
+    cout << "Account deleted successfully!\n";
+}
+
+int main() {
+    int choice, id;
+
+    do {
+        cout << "\n===== Bank Management System =====\n";
+        cout << "1. Create Account\n";
+        cout << "2. Deposit Money\n";
+        cout << "3. Withdraw Money\n";
+        cout << "4. Check Account Details\n";
+        cout << "5. Delete Account\n";
+        cout << "6. Exit\n";
+        cout << "Enter your choice: ";
+
+        if (!(cin >> choice)) {
+            cout << "Please enter a valid number.\n";
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            continue;
+        }
+
+        switch (choice) {
+            case 1:
+                addAccount();
+                break;
+
+            case 2:
+                cout << "Enter account number: ";
+                if (cin >> id) {
+                    transaction(id, 1);
+                } else {
+                    cout << "Invalid account number.\n";
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                }
+                break;
+
+            case 3:
+                cout << "Enter account number: ";
+                if (cin >> id) {
+                    transaction(id, 2);
+                } else {
+                    cout << "Invalid account number.\n";
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                }
+                break;
+
+            case 4:
+                cout << "Enter account number: ";
+                if (cin >> id) {
+                    checkAccount(id);
+                } else {
+                    cout << "Invalid account number.\n";
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                }
+                break;
+
+            case 5:
+                cout << "Enter account number to delete: ";
+                if (cin >> id) {
+                    deleteAccount(id);
+                } else {
+                    cout << "Invalid account number.\n";
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                }
+                break;
+
+            case 6:
+                cout << "Thank you for using the bank system!\n";
+                break;
+
+            default:
+                cout << "Invalid choice. Select 1 to 6.\n";
+        }
+
+    } while (choice != 6);
+
+    return 0;
+}
+```
